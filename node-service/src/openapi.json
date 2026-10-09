@@ -1,0 +1,319 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DocStack Document Ingestion API",
+    "description": "Offline-first Document Ingestion & Chunking API with OCR, text chunking, and pgvector embeddings.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Local server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "username", "password", "email"],
+        "properties": {
+          "name": { "type": "string", "example": "Humza" },
+          "dob": { "type": "string", "format": "date", "example": "1995-05-15" },
+          "username": { "type": "string", "example": "humza" },
+          "password": { "type": "string", "format": "password", "example": "password123" },
+          "email": { "type": "string", "format": "email", "example": "humza@example.com" },
+          "contact_no": { "type": "string", "example": "+1234567890" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "example": "humza" },
+          "password": { "type": "string", "format": "password", "example": "password123" }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsIn..." }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "document_name": { "type": "string", "example": "contract.pdf" },
+          "uploaded_at": { "type": "string", "format": "date-time" },
+          "size_bytes": { "type": "integer", "example": 1048576 },
+          "file_type": { "type": "string", "example": "pdf" },
+          "mime_type": { "type": "string", "example": "application/pdf" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "completed", "failed"],
+            "example": "completed"
+          },
+          "error_message": { "type": "string", "nullable": true, "example": null }
+        }
+      },
+      "Chunk": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "chunk_index": { "type": "integer", "example": 0 },
+          "content": { "type": "string", "example": "Section 1. Definitions..." },
+          "page_number": { "type": "integer", "nullable": true, "example": 1 },
+          "metadata": { "type": "object" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check if node-service is alive and running.",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Create a new user account with bcrypt password hashing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/Document" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Username or email already in use" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Log in",
+        "description": "Authenticate user credentials and receive a JWT token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+              }
+            }
+          },
+          "401": { "description": "Invalid username or password" }
+        }
+      }
+    },
+    "/documents/upload": {
+      "post": {
+        "summary": "Upload a document",
+        "description": "Upload a file (PDF, DOCX, TXT, PNG, JPG, JPEG). Validates file type and magic bytes, stores it, and enqueues background processing.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Document file to upload"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "File accepted and queued for processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Document uploaded and queued for processing" },
+                    "document": { "$ref": "#/components/schemas/Document" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "No file provided" },
+          "401": { "description": "Unauthorized" },
+          "413": { "description": "File too large" },
+          "415": { "description": "Unsupported file type" }
+        }
+      }
+    },
+    "/documents": {
+      "get": {
+        "summary": "List documents",
+        "description": "List documents uploaded by the authenticated user.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Document" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "get": {
+        "summary": "Get document status",
+        "description": "Check current processing status and metadata for a specific document.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "Document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": { "$ref": "#/components/schemas/Document" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Document not found" }
+        }
+      }
+    },
+    "/documents/{id}/chunks": {
+      "get": {
+        "summary": "Get document chunks",
+        "description": "Retrieve chunked text and metadata for a completed document.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "Document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of document chunks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chunks": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Chunk" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Document not found" }
+        }
+      }
+    },
+    "/documents/metrics": {
+      "get": {
+        "summary": "Get document ingestion performance metrics",
+        "description": "Retrieve aggregate KPIs (averages, medians, queue wait) and per-document stage timing telemetry.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Ingestion performance metrics summary and historical telemetry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": { "type": "object" },
+                    "history": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    }
+  }
+}

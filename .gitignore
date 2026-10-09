@@ -1,0 +1,215 @@
+# ==============================================================================
+# DocStack — Comprehensive .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables & Secrets
+# ------------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# ------------------------------------------------------------------------------
+# 2. Uploads, Processed Media & User Storage
+# ------------------------------------------------------------------------------
+uploads/
+uploads/*
+!uploads/.gitkeep
+node-service/uploads/
+node-service/uploads/*
+!node-service/uploads/.gitkeep
+python-service/uploads/
+python-service/uploads/*
+!python-service/uploads/.gitkeep
+
+# ------------------------------------------------------------------------------
+# 3. Database & Message Broker Data
+# ------------------------------------------------------------------------------
+dump.rdb
+*.rdb
+*.sql.gz
+*.sql.tar
+pgdata/
+redis_data/
+ollama_models/
+*.sqlite
+*.sqlite3
+*.db
+
+# ------------------------------------------------------------------------------
+# 4. Node.js & JavaScript Ecosystem
+# ------------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ------------------------------------------------------------------------------
+# 5. Python Ecosystem & Virtual Environments
+# ------------------------------------------------------------------------------
+# Bytecode & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+venv*/
+.venv/
+.venv*/
+env/
+env*/
+ENV/
+.env_*/
+
+# Distribution & Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & Coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# Type Checking & Linters
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Jupyter / IPython
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ------------------------------------------------------------------------------
+# 6. Archive & Compressed Files
+# ------------------------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.iso
+
+# ------------------------------------------------------------------------------
+# 7. Operating System Metadata
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ------------------------------------------------------------------------------
+# 8. IDEs, Editors & Developer Tools
+# ------------------------------------------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (IntelliJ, PyCharm, WebStorm)
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Vim / Emacs / Sublime
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------------------------------------------------------
+# 9. Logs & Diagnostics
+# ------------------------------------------------------------------------------
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+core
+*.stackdump
+
+# ------------------------------------------------------------------------------
+# 10. Temporary Files & Scratch
+# ------------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak

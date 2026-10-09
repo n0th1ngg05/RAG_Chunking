@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: docstack_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_SUPERUSER_PASSWORD:-postgres}
+      - POSTGRES_DB=docstack
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: docstack_redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - internal
+    # Not published to host — only node-service and python-worker reach it
+    # over the internal network.
+
+  ollama:
+    image: ollama/ollama
+    container_name: docstack_ollama
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "11434:11434"   # exposed to host so you can `ollama pull` from outside too
+    restart: unless-stopped
+    networks:
+      - internal
+    # Uncomment if you have an NVIDIA GPU + nvidia-container-toolkit installed:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  node-service:
+    build:
+      context: ./node-service
+    container_name: docstack_node
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHON_WORKER_INTERNAL=python-worker
+    ports:
+      - "3000:3000"   # the only service a client talks to
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - internal
+
+  python-worker:
+    build:
+      context: ./python-service
+    container_name: docstack_python_worker
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://ollama:11434
+    # NOTE: deliberately NO "ports:" section. This container is never reachable
+    # from outside Docker's internal network — only node-service and redis can
+    # talk to it. This is the security decision from the architecture review:
+    # the processing worker must not be internet- or host-reachable.
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redis_data:
+  ollama_models:
+  uploads:
